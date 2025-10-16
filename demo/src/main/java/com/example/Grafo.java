@@ -68,4 +68,56 @@ public class Grafo {
             System.out.println(entry.getKey() + " -> " + String.join(", ", entry.getValue()));
         }
     }
+
+    public void imprimirEccentricity(){
+        // A excentricidade de um vértice é a maior distância entre ele e qualquer outro vértice no grafo.
+        // Implementado usando BFS para encontrar a distância minima entre os vértices e pegar a maior de todas, encontrando assim a excentricidade.
+
+        for (String vertice : adjacencia.keySet()) {
+            int excentricidade = calcularExcentricidade(vertice);
+            System.out.println("Excentricidade de " + vertice + ": " + excentricidade);
+        }
+    }
+
+    private int calcularExcentricidade(String inicio) { 
+        Queue<String> fila = new LinkedList<>();
+        Map<String, Integer> distancias = new HashMap<>();
+        Set<String> visitados = new HashSet<>();
+
+        fila.add(inicio);
+        distancias.put(inicio, 0);
+        visitados.add(inicio);
+
+        while (!fila.isEmpty()) {
+            String verticeAtual = fila.poll();
+            int distanciaAtual = distancias.get(verticeAtual);
+
+            for (String vizinho : adjacencia.get(verticeAtual)) {
+                if (!visitados.contains(vizinho)) {
+                    visitados.add(vizinho);
+                    distancias.put(vizinho, distanciaAtual + 1);
+                    fila.add(vizinho);
+                }
+            }
+        }
+
+        return Collections.max(distancias.values());
+    }
+    
+    public void salvarEccentricityEmArquivo(String nomeArquivo) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(nomeArquivo))) {
+            for (String vertice : adjacencia.keySet()) {
+                int excentricidade = calcularExcentricidade(vertice);
+                String linha = "Excentricidade de " + vertice + ": " + excentricidade;
+                writer.write(linha);
+                writer.newLine();
+            }
+            System.out.println("Excentricidades salvas em: " + nomeArquivo);
+        } catch (IOException e) {
+            System.err.println("Erro ao salvar arquivo: " + e.getMessage());
+        }
+    }
+    
+
+
 }
