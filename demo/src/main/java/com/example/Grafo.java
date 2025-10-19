@@ -117,6 +117,85 @@ public class Grafo {
             System.err.println("Erro ao salvar arquivo: " + e.getMessage());
         }
     }
+
+
+    /*
+      A Closeness Centrality mede o quão "central" um vértice é em relação aos outros —
+      isto é, o quão próximo ele está de todos os demais, com base na distância média
+      até cada vértice alcançável.
+      
+      A fórmula normalizada é:
+      CC(v) = (N - 1) / sum(d(v,u)), onde d(v,u) é a distância mínima entre v e u.
+      Caso o vértice não consiga alcançar todos os outros, o valor retornado é 0.
+    */
+    public void imprimirClosenessCentrality() {
+        Map<String, Double> centralidades = calcularClosenessCentrality();
+
+        for (Map.Entry<String, Double> entry : centralidades.entrySet()) {
+            System.out.printf("Closeness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue());
+        }
+    }
+
+    public Map<String, Double> calcularClosenessCentrality() {
+        Map<String, Double> centralidades = new HashMap<>();
+        int N = adjacencia.size();
+
+        for (String vertice : adjacencia.keySet()) {
+            Map<String, Integer> distancias = bfsDistancias(vertice);
+            int alcançaveis = distancias.size();
+
+            if (alcançaveis < N) {
+                centralidades.put(vertice, 0.0);
+                continue;
+            }
+
+            int somaDistancias = distancias.values().stream().mapToInt(Integer::intValue).sum();
+            double ccNormalizada = (double) (N - 1) / somaDistancias;
+            centralidades.put(vertice, ccNormalizada);
+        }
+
+        return centralidades;
+    }
+
+    public void salvarClosenessCentralityEmArquivo(String nomeArquivo) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(nomeArquivo))) {
+            Map<String, Double> centralidades = calcularClosenessCentrality();
+
+            for (Map.Entry<String, Double> entry : centralidades.entrySet()) {
+                writer.write(String.format("Closeness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue()));
+            }
+
+            System.out.println("Closeness Centrality salva em: " + nomeArquivo);
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
+    }
+
+    private Map<String, Integer> bfsDistancias(String inicio) {
+        Queue<String> fila = new LinkedList<>();
+        Map<String, Integer> distancias = new HashMap<>();
+        Set<String> visitados = new HashSet<>();
+
+        fila.add(inicio);
+        distancias.put(inicio, 0);
+        visitados.add(inicio);
+
+        while (!fila.isEmpty()) {
+            String verticeAtual = fila.poll();
+            int distanciaAtual = distancias.get(verticeAtual);
+
+            for (String vizinho : adjacencia.get(verticeAtual)) {
+                if (!visitados.contains(vizinho)) {
+                    visitados.add(vizinho);
+                    distancias.put(vizinho, distanciaAtual + 1);
+                    fila.add(vizinho);
+                }
+            }
+        }
+
+        return distancias;
+    }
+
     
 
 
