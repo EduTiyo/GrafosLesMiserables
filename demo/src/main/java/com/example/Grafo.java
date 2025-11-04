@@ -68,135 +68,89 @@ public class Grafo {
             System.out.println(entry.getKey() + " -> " + String.join(", ", entry.getValue()));
         }
     }
-
-    public void imprimirEccentricity(){
-        // A excentricidade de um vértice é a maior distância entre ele e qualquer outro vértice no grafo.
-        // Implementado usando BFS para encontrar a distância minima entre os vértices e pegar a maior de todas, encontrando assim a excentricidade.
-
-        for (String vertice : adjacencia.keySet()) {
-            int excentricidade = calcularExcentricidade(vertice);
-            System.out.println("Excentricidade de " + vertice + ": " + excentricidade);
+    /*
+     * Betweenness Centrality mede a importância de um vértice com base na quantidade
+     * de vezes que ele aparece nos caminhos mais curtos entre outros pares de vértices.
+     */
+    public Map<String, Double> calcularBetweennessCentrality() {
+        Map<String, Double> betweenness = new HashMap<>();
+        for (String v : adjacencia.keySet()) {
+            betweenness.put(v, 0.0);
         }
-    }
 
-    private int calcularExcentricidade(String inicio) { 
-        Queue<String> fila = new LinkedList<>();
-        Map<String, Integer> distancias = new HashMap<>();
-        Set<String> visitados = new HashSet<>();
+        for (String s : adjacencia.keySet()) {
+            Stack<String> stack = new Stack<>();
+            Map<String, List<String>> predecessors = new HashMap<>();
+            Map<String, Integer> sigma = new HashMap<>();
+            Map<String, Integer> distancia = new HashMap<>();
+            Queue<String> queue = new LinkedList<>();
 
-        fila.add(inicio);
-        distancias.put(inicio, 0);
-        visitados.add(inicio);
+            for (String v : adjacencia.keySet()) {
+                predecessors.put(v, new ArrayList<>());
+                sigma.put(v, 0);
+                distancia.put(v, -1);
+            }
+            sigma.put(s, 1);
+            distancia.put(s, 0);
+            queue.add(s);
 
-        while (!fila.isEmpty()) {
-            String verticeAtual = fila.poll();
-            int distanciaAtual = distancias.get(verticeAtual);
+            while (!queue.isEmpty()) {
+                String v = queue.poll();
+                stack.push(v);
 
-            for (String vizinho : adjacencia.get(verticeAtual)) {
-                if (!visitados.contains(vizinho)) {
-                    visitados.add(vizinho);
-                    distancias.put(vizinho, distanciaAtual + 1);
-                    fila.add(vizinho);
+                for (String w : adjacencia.get(v)) {
+                    if (distancia.get(w) < 0) {
+                        distancia.put(w, distancia.get(v) + 1);
+                        queue.add(w);
+                    }
+                    if (distancia.get(w) == distancia.get(v) + 1) {
+                        sigma.put(w, sigma.get(w) + sigma.get(v));
+                        predecessors.get(w).add(v);
+                    }
+                }
+            }
+
+            Map<String, Double> delta = new HashMap<>();
+            for (String v : adjacencia.keySet()) {
+                delta.put(v, 0.0);
+            }
+
+            while (!stack.isEmpty()) {
+                String w = stack.pop();
+                for (String v : predecessors.get(w)) {
+                    double c = ((double) sigma.get(v) / sigma.get(w)) * (1 + delta.get(w));
+                    delta.put(v, delta.get(v) + c);
+                }
+                if (!w.equals(s)) {
+                    betweenness.put(w, betweenness.get(w) + delta.get(w));
                 }
             }
         }
 
-        return Collections.max(distancias.values());
+        return betweenness;
     }
-    
-    public void salvarEccentricityEmArquivo(String nomeArquivo) {
+
+    public void imprimirBetweennessCentrality() {
+        Map<String, Double> betweenness = calcularBetweennessCentrality();
+
+        for (Map.Entry<String, Double> entry : betweenness.entrySet()) {
+            System.out.printf("Betweenness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue());
+        }
+    }
+
+    public void salvarBetweennessCentralityEmArquivo(String nomeArquivo) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(nomeArquivo))) {
-            for (String vertice : adjacencia.keySet()) {
-                int excentricidade = calcularExcentricidade(vertice);
-                String linha = "Excentricidade de " + vertice + ": " + excentricidade;
-                writer.write(linha);
-                writer.newLine();
-            }
-            System.out.println("Excentricidades salvas em: " + nomeArquivo);
-        } catch (IOException e) {
-            System.err.println("Erro ao salvar arquivo: " + e.getMessage());
-        }
-    }
+            Map<String, Double> betweenness = calcularBetweennessCentrality();
 
-
-    /*
-      A Closeness Centrality mede o quão "central" um vértice é em relação aos outros —
-      isto é, o quão próximo ele está de todos os demais, com base na distância média
-      até cada vértice alcançável.
-      
-      A fórmula normalizada é:
-      CC(v) = (N - 1) / sum(d(v,u)), onde d(v,u) é a distância mínima entre v e u.
-      Caso o vértice não consiga alcançar todos os outros, o valor retornado é 0.
-    */
-    public void imprimirClosenessCentrality() {
-        Map<String, Double> centralidades = calcularClosenessCentrality();
-
-        for (Map.Entry<String, Double> entry : centralidades.entrySet()) {
-            System.out.printf("Closeness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue());
-        }
-    }
-
-    public Map<String, Double> calcularClosenessCentrality() {
-        Map<String, Double> centralidades = new HashMap<>();
-        int N = adjacencia.size();
-
-        for (String vertice : adjacencia.keySet()) {
-            Map<String, Integer> distancias = bfsDistancias(vertice);
-            int alcançaveis = distancias.size();
-
-            if (alcançaveis < N) {
-                centralidades.put(vertice, 0.0);
-                continue;
+            for (Map.Entry<String, Double> entry : betweenness.entrySet()) {
+                writer.write(String.format("Betweenness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue()));
             }
 
-            int somaDistancias = distancias.values().stream().mapToInt(Integer::intValue).sum();
-            double ccNormalizada = (double) (N - 1) / somaDistancias;
-            centralidades.put(vertice, ccNormalizada);
-        }
-
-        return centralidades;
-    }
-
-    public void salvarClosenessCentralityEmArquivo(String nomeArquivo) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(nomeArquivo))) {
-            Map<String, Double> centralidades = calcularClosenessCentrality();
-
-            for (Map.Entry<String, Double> entry : centralidades.entrySet()) {
-                writer.write(String.format("Closeness Centrality de %s: %.6f%n", entry.getKey(), entry.getValue()));
-            }
-
-            System.out.println("Closeness Centrality salva em: " + nomeArquivo);
+            System.out.println("Betweenness Centrality salva em: " + nomeArquivo);
         } catch (IOException e) {
             e.printStackTrace(System.err);
         }
     }
-
-    private Map<String, Integer> bfsDistancias(String inicio) {
-        Queue<String> fila = new LinkedList<>();
-        Map<String, Integer> distancias = new HashMap<>();
-        Set<String> visitados = new HashSet<>();
-
-        fila.add(inicio);
-        distancias.put(inicio, 0);
-        visitados.add(inicio);
-
-        while (!fila.isEmpty()) {
-            String verticeAtual = fila.poll();
-            int distanciaAtual = distancias.get(verticeAtual);
-
-            for (String vizinho : adjacencia.get(verticeAtual)) {
-                if (!visitados.contains(vizinho)) {
-                    visitados.add(vizinho);
-                    distancias.put(vizinho, distanciaAtual + 1);
-                    fila.add(vizinho);
-                }
-            }
-        }
-
-        return distancias;
-    }
-
-    
 
 
 }
